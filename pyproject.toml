@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homomorphic-comparison-reproduction"
+version = "0.1.0"
+description = "CKKS/HEAAN-style ciphertext reproduction of composite-polynomial homomorphic comparison methods from Cheon-Kim-Kim ASIACRYPT 2020."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "OpenAI Codex"}]
+keywords = ["homomorphic-encryption", "comparison", "polynomial-approximation", "asiacrypt-2020"]
+
+[project.scripts]
+homcomp = "homcomp.cli:main"
+
+[project.optional-dependencies]
+real-ckks = ["tenseal"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"
