@@ -15,12 +15,13 @@ The project now contains two layers:
    plaintext multiplication, rescaling, scalar-slot vectors, and encrypted
    evaluation of the `NewComp` comparison circuit.
 
-The native backend is intentionally compact and auditable so the complete
-ciphertext flow can be inspected in one repository.  It is appropriate for
-reproduction, teaching, and circuit debugging.  For production security, port the
-same evaluator to a hardened CKKS library such as HEAAN, SEAL, OpenFHE, Lattigo,
-or TenSEAL, because this repository does not attempt side-channel hardening,
-SIMD canonical embedding, or formal parameter validation.
+The repository includes two execution backends.  The default native backend is
+intentionally compact and auditable so the complete ciphertext flow can be
+inspected in one repository.  For real CKKS execution, the optional TenSEAL
+adapter delegates ciphertexts and arithmetic to an existing CKKS library
+(Microsoft SEAL through TenSEAL) while reusing the same NewComp/EvalComp circuit
+code.  Install it with `pip install -e .[real-ckks]` and run CLI demos with
+`--backend tenseal`.
 
 This branch also adds an EvalRound/EvalComp reproduction path: EvalComp replaces
 the modular-function approximation in CKKS bootstrapping with HCF-based
@@ -71,12 +72,13 @@ Run a plaintext comparison:
 homcomp compare 0.75 0.25 -n 4 -d 6
 ```
 
-Run an encrypted CKKS comparison end to end.  The command encrypts both inputs,
-evaluates the polynomial comparison on ciphertexts, and decrypts only the final
-result:
+Run an encrypted CKKS comparison end to end.  The default command uses the
+auditable native backend; add `--backend tenseal` after installing the optional
+`real-ckks` extra to run the same circuit through TenSEAL:
 
 ```bash
 homcomp ckks-demo 0.75 0.25 -n 1 -d 2 --scale-bits 20 --modulus-bits 4096
+homcomp ckks-demo 0.75 0.25 -n 1 -d 2 --backend tenseal
 ```
 
 Run the encrypted vector demo:
@@ -105,7 +107,18 @@ homcomp paper-report --combined-alpha 8 --hcf-share 1.0
 PYTHONPATH=src python examples/paper_comparison_report.py
 ```
 
-## Native CKKS API example
+## CKKS backend API examples
+
+Optional TenSEAL backend using an existing CKKS library:
+
+```python
+from homcomp.tenseal_backend import TenSEALCKKSContext
+
+ctx = TenSEALCKKSContext()
+print(ctx.compare_plain(0.75, 0.25, n=1, d=2))
+```
+
+Native auditable backend:
 
 ```python
 from homcomp.ckks import CKKSParameters, NativeCKKSContext
@@ -155,14 +168,16 @@ reduces both comparison complexity and HEAAN runtime versus NewCompG/H.  The
 combined **NewEvalCompH3&5** scheme: EvalComp's HCF-based bootstrapping flow plus
 the NewCompH3&5 comparison-function replacement.  The estimate keeps EvalComp's
 reported precision/modulus metrics and applies the H3&5 comparison-component
-speedup to a configurable HCF time share (`--hcf-share`).  The native Python CKKS
-backend remains an educational scalar-slot backend, so its wall-clock time is not
-directly comparable to the C++/HEAAN laboratory timings in the papers.
+speedup to a configurable HCF time share (`--hcf-share`).  The native Python CKKS backend remains an educational scalar-slot backend, so its
+wall-clock time is not directly comparable to the C++/HEAAN laboratory timings in
+the papers.  Use `--backend tenseal` when you want the circuits to run on an
+existing CKKS implementation rather than the native teaching backend.
 
 ## Scope
 
 - Implemented: exact `f_n` generation, plaintext `NewComp`, native CKKS-style
-  ciphertexts, encrypted `NewComp`, scalar-slot encrypted vectors, EvalComp/HCF
-  rounding, optimized cipher-sign replacement, CLI demos, and tests.
+  ciphertexts, optional TenSEAL real-CKKS adapter, encrypted `NewComp`,
+  scalar-slot encrypted vectors, EvalComp/HCF rounding, optimized cipher-sign
+  replacement, CLI demos, and tests.
 - Not implemented: `NewCompG` minimax/Remez acceleration, full RNS modulus
   chains, packed SIMD bootstrapping transforms, and production security audits.

@@ -7,6 +7,7 @@ import argparse
 from .ckks import CKKSParameters, NativeCKKSContext
 from .evalcomp import EvalCompBootstrapper, EvalCompParameters
 from .paper_results import format_paper_report
+from .tenseal_backend import TenSEALCKKSContext, TenSEALCKKSParameters
 from .core import (
     compare,
     compare_integers,
@@ -57,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     ckks.add_argument("--modulus-bits", type=int, default=4096)
     ckks.add_argument("--scale-bits", type=int, default=20)
     ckks.add_argument("--seed", type=int, default=0)
+    ckks.add_argument("--backend", choices=["native", "tenseal"], default="native")
 
     evalcomp = sub.add_parser(
         "evalcomp-demo",
@@ -79,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     evalcomp.add_argument("--modulus-bits", type=int, default=4096)
     evalcomp.add_argument("--scale-bits", type=int, default=16)
     evalcomp.add_argument("--seed", type=int, default=0)
+    evalcomp.add_argument("--backend", choices=["native", "tenseal"], default="native")
 
     report = sub.add_parser(
         "paper-report",
@@ -118,15 +121,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "ckks-demo":
-        ctx = NativeCKKSContext(
-            CKKSParameters(
-                poly_degree=args.poly_degree,
-                coefficient_modulus_bits=args.modulus_bits,
-                scale_bits=args.scale_bits,
-            ),
-            seed=args.seed,
-        )
-        result = ctx.compare_plain(args.a, args.b, n=args.n, d=args.d)
+        if args.backend == "tenseal":
+            ctx = TenSEALCKKSContext(
+                TenSEALCKKSParameters(
+                    poly_modulus_degree=max(args.poly_degree, 8192),
+                    global_scale_bits=args.scale_bits,
+                )
+            )
+            result = ctx.compare_plain(args.a, args.b, n=args.n, d=args.d)
+        else:
+            ctx = NativeCKKSContext(
+                CKKSParameters(
+                    poly_degree=args.poly_degree,
+                    coefficient_modulus_bits=args.modulus_bits,
+                    scale_bits=args.scale_bits,
+                ),
+                seed=args.seed,
+            )
+            result = ctx.compare_plain(args.a, args.b, n=args.n, d=args.d)
         print(result)
         return 0
 
@@ -141,14 +153,22 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "evalcomp-demo":
-        ctx = NativeCKKSContext(
-            CKKSParameters(
-                poly_degree=args.poly_degree,
-                coefficient_modulus_bits=args.modulus_bits,
-                scale_bits=args.scale_bits,
-            ),
-            seed=args.seed,
-        )
+        if args.backend == "tenseal":
+            ctx = TenSEALCKKSContext(
+                TenSEALCKKSParameters(
+                    poly_modulus_degree=max(args.poly_degree, 8192),
+                    global_scale_bits=args.scale_bits,
+                )
+            )
+        else:
+            ctx = NativeCKKSContext(
+                CKKSParameters(
+                    poly_degree=args.poly_degree,
+                    coefficient_modulus_bits=args.modulus_bits,
+                    scale_bits=args.scale_bits,
+                ),
+                seed=args.seed,
+            )
         params = EvalCompParameters(
             modulus_step=args.modulus_step,
             integer_bound=args.integer_bound,
@@ -161,13 +181,19 @@ def main(argv: list[str] | None = None) -> int:
         )
         bootstrapper = EvalCompBootstrapper(ctx, params)
         ciphertext = ctx.encrypt(args.value)
-        rounded = bootstrapper.eval_round(ciphertext).decrypt()
-        bootstrapped = bootstrapper.bootstrap(ciphertext).decrypt()
+        rounded = _first_decrypted(bootstrapper.eval_round(ciphertext).decrypt())
+        bootstrapped = _first_decrypted(bootstrapper.bootstrap(ciphertext).decrypt())
         print(f"eval_round={rounded}")
         print(f"evalcomp={bootstrapped}")
         return 0
 
     raise AssertionError("unreachable")
+
+
+def _first_decrypted(value):
+    if isinstance(value, list):
+        return value[0]
+    return value
 
 
 def _parse_optimized_degrees(value: str) -> tuple[int, ...]:

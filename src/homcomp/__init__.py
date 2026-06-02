@@ -12,6 +12,7 @@ from .ckks import (
 )
 from .evalcomp import EvalCompBootstrapper, EvalCompParameters
 from .paper_results import format_paper_report
+from .tenseal_backend import TenSEALCKKSContext, TenSEALCKKSParameters, TenSEALCiphertext
 from .sign_methods import (
     CompositePolynomialSign,
     OptimizedCipherSign,
@@ -33,6 +34,9 @@ __all__ = [
     "CKKSCiphertext",
     "CKKSEncryptedVector",
     "NativeCKKSContext",
+    "TenSEALCKKSContext",
+    "TenSEALCKKSParameters",
+    "TenSEALCiphertext",
     "EvalCompBootstrapper",
     "EvalCompParameters",
     "CompositePolynomialSign",

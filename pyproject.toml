@@ -15,6 +15,9 @@ keywords = ["homomorphic-encryption", "comparison", "polynomial-approximation", 
 [project.scripts]
 homcomp = "homcomp.cli:main"
 
+[project.optional-dependencies]
+real-ckks = ["tenseal"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
